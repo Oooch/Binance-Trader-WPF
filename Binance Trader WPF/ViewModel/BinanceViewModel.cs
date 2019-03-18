@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Data.Entity;
 using System.Globalization;
 using System.Linq;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Data;
+using System.Windows.Media;
 
 namespace Binance_Trader_WPF.ViewModel
 {    
@@ -25,24 +27,6 @@ namespace Binance_Trader_WPF.ViewModel
         public class Coin : ViewModel
         {
             public string Currency { get; set; }
-            //private decimal _candles03;
-            //public decimal Candles03
-            //{
-            //    get => _candles03;
-            //    set => SetProperty(ref _candles03, value);
-            //}
-            //private decimal _candles36;
-            //public decimal Candles36
-            //{
-            //    get => _candles36;
-            //    set => SetProperty(ref _candles36, value);
-            //}
-            //private decimal _candles69;
-            //public decimal Candles69
-            //{
-            //    get => _candles69;
-            //    set => SetProperty(ref _candles69, value);
-            //}
             private decimal _volume24H;
             public decimal Volume24H
             {
@@ -55,24 +39,60 @@ namespace Binance_Trader_WPF.ViewModel
                 get => _priceChange24H;
                 set => SetProperty(ref _priceChange24H, value);
             }
-            //private decimal _priceChange1H;
-            //public decimal PriceChange1H
-            //{
-            //    get => _priceChange1H;
-            //    set => SetProperty(ref _priceChange1H, value);
-            //}
-            //private int _marketCap;
-            //public int MarketCap
-            //{
-            //    get => _marketCap;
-            //    set => SetProperty(ref _marketCap, value);
-            //}
+            private decimal _lowPercentChange;
+            public decimal LowPercentChange
+            {
+                get => _lowPercentChange;
+                set => SetProperty(ref _lowPercentChange, value);
+            }
+            private decimal _highPercentChange;
+            public decimal HighPercentChange
+            {
+                get => _highPercentChange;
+                set => SetProperty(ref _highPercentChange, value);
+            }
+            private decimal _lastPrice;
+            public decimal LastPrice
+            {
+                get => _lastPrice;
+                set => SetProperty(ref _lastPrice, value);
+            }
+            private decimal _lowPrice;
+            public decimal LowPrice
+            {
+                get => _lowPrice;
+                set => SetProperty(ref _lowPrice, value);
+            }
+            private decimal _highPrice;
+            public decimal HighPrice
+            {
+                get => _highPrice;
+                set => SetProperty(ref _highPrice, value);
+            }
+            private int _trades;
+            public int Trades
+            {
+                get => _trades;
+                set => SetProperty(ref _trades, value);
+            }            
             private DateTime _lastUpdated;
             public DateTime LastUpdated
             {
                 get => _lastUpdated;
                 set => SetProperty(ref _lastUpdated, value);
             }
+            private bool _detailedInfo;
+            public bool DetailedInfo
+            {
+                get => _detailedInfo;
+                set => SetProperty(ref _detailedInfo, value);
+            }
+            //private decimal _priceChange1H;
+            //public decimal PriceChange1H
+            //{
+            //    get => _priceChange1H;
+            //    set => SetProperty(ref _priceChange1H, value);
+            //}
         }
 
         private ObservableCollection<Coin> _coinsView;
@@ -82,36 +102,94 @@ namespace Binance_Trader_WPF.ViewModel
             set => SetProperty(ref _coinsView, value);
         }
 
+        private CryptoExchange.Net.Objects.WebCallResult<Binance.Net.Objects.Binance24HPrice[]> _coins24HPrice;
+        public CryptoExchange.Net.Objects.WebCallResult<Binance.Net.Objects.Binance24HPrice[]> Coins24HPrice
+        {
+            get => _coins24HPrice;
+            set => SetProperty(ref _coins24HPrice, value);
+        }
+
+        private string _searchPair;
+        public string SearchPair
+        {
+            get => _searchPair;
+            set => SetProperty(ref _searchPair, value);
+        }
+
         public async Task<bool> CoinsViewLoad()
         {
-            var coins = BinanceModel.CoinsGet();
-            if(CoinsView == null)
+            Enabled = false;            
+            if (CoinsView == null)
             {
                 CoinsView = new ObservableCollection<Coin>();
             }
             while (true)
             {
-                foreach (var coin in coins.Data.OrderBy(o => o.Symbol))
+                Coins24HPrice = BinanceModel.CoinsGet();
+                foreach (var coin in Coins24HPrice.Data.OrderBy(o => o.Symbol))
                 {
-                    if (coin.Volume > 100 && coin.Symbol == "ARNBTC")
+                    if (coin.Symbol.EndsWith("BTC") | coin.Symbol.EndsWith("BNB") | coin.Symbol.EndsWith("ETH") | coin.Symbol.EndsWith("UDST"))
                     {
-                        var coinExists = CoinsView.Where(o => o.Currency == coin.Symbol);
-                        if (coinExists == null)
+                        if (coin.Trades > 1000)
                         {
                             //var coinIndepth1M = await BinanceModel.CoinIndepth(coin.Symbol, Binance.Net.Objects.KlineInterval.OneMinute);
                             //var coinIndepth1H = await BinanceModel.CoinIndepth(coin.Symbol, Binance.Net.Objects.KlineInterval.OneHour);
+                            var coinExists = CoinsView.Where(o => o.Currency == coin.Symbol);
                             var newCoin = new Coin();
+                            if (!coinExists.Any())
+                            {
+                                newCoin = new Coin();
+                            }
+                            else
+                            {
+                                newCoin = coinExists.First();
+                            }
                             newCoin.Currency = coin.Symbol;
-                            newCoin.Volume24H = coin.Volume;
-                            //newCoin.Candles03 = 
+                            newCoin.Volume24H = decimal.Round(coin.Volume, 2);
                             newCoin.PriceChange24H = coin.PriceChangePercent;
+                            newCoin.LowPrice = coin.LowPrice;
+                            newCoin.HighPrice = coin.HighPrice;
+                            newCoin.LastPrice = coin.LastPrice;
+                            if (coin.LastPrice > 0)
+                            {
+                                newCoin.LowPercentChange = ((coin.LowPrice - coin.LastPrice) / coin.LastPrice * 100);
+                                newCoin.LowPercentChange = Math.Round(newCoin.LowPercentChange, 2);
+                                newCoin.HighPercentChange = ((coin.HighPrice - coin.LastPrice) / coin.LastPrice * 100);
+                                newCoin.HighPercentChange = Math.Round(newCoin.HighPercentChange, 2);
+                            }
+                            newCoin.Trades = coin.Trades;
                             newCoin.LastUpdated = DateTime.Now;
-                            CoinsView.Add(newCoin);
-                            RaisePropertyChanged(() => CoinsView);
+
+                            if (!coinExists.Any())
+                            {
+                                CoinsView.Add(newCoin);
+                                RaisePropertyChanged(() => CoinsView);
+                            }                            
                         }
                     }
                 }
-                await Task.Delay(60000);                
+                await Task.Delay(15000);                
+            }
+        }
+
+        public void FilterCoin(ICollectionView view)
+        {
+            if (view != null)
+            {
+                if (!string.IsNullOrEmpty(SearchPair))
+                {
+                    view.Filter = o =>
+                    {
+                        var coin = o as Coin;
+                        return coin.Currency.StartsWith(SearchPair, StringComparison.InvariantCultureIgnoreCase);
+                    };
+                }
+                else
+                {
+                    view.Filter = null;
+                }
+                RaisePropertyChanged(() => CoinsView);
+                view.Refresh();
             }
         }
 
@@ -119,48 +197,6 @@ namespace Binance_Trader_WPF.ViewModel
         {
             BinanceModel.RateLimts();
         }
-
-        //public class CoinDBData : ViewModel
-        //{
-        //    private DbSet<Data.Coin> _coins;
-        //    public DbSet<Data.Coin> Coins
-        //    {
-        //        get => _coins;
-        //        set => SetProperty(ref _coins, value);
-        //    }
-        //    private DbSet<Data.CoinValue> _coinValues;
-        //    public DbSet<Data.CoinValue> CoinValues
-        //    {
-        //        get => _coinValues;
-        //        set => SetProperty(ref _coinValues, value);
-        //    }
-        //}
-
-        //private ObservableCollection<CoinDBData> _coinDBDataObservable;
-        //public ObservableCollection<CoinDBData> CoinDBDataObservable
-        //{
-        //    get => _coinDBDataObservable;
-        //    set => SetProperty(ref _coinDBDataObservable, value);
-        //}
-
-        //public void UpdateDB()
-        //{
-        //    BinanceModel.CoinsUpdate();
-        //}
-
-        //public void LoadDbSets()
-        //{
-        //    using (var db = new Data.CoinDbContext())
-        //    {
-        //        var coinDBData = new CoinDBData();
-        //        db.Coins.Load();
-        //        coinDBData.Coins = db.Coins;
-        //        CoinDBDataObservable = new ObservableCollection<CoinDBData>();
-        //        CoinDBDataObservable.Add(coinDBData);
-        //        RaisePropertyChanged(() => CoinDBDataObservable);
-        //    }
-        //}
-
 
         public async Task<bool> BinanceSocket()
         {
@@ -177,7 +213,7 @@ namespace Binance_Trader_WPF.ViewModel
             {
                 if (value != null)
                 {
-                    var CoinView = value as ObservableCollection<BinanceViewModel.Coin>;
+                    ObservableCollection<BinanceViewModel.Coin> CoinView = value as ObservableCollection<BinanceViewModel.Coin>;
                     if (CoinView == null || !CoinView.Any())
                     {
                         return null;
@@ -198,37 +234,43 @@ namespace Binance_Trader_WPF.ViewModel
         }
     }
 
-    //public class CoinDBDataToComboBox : IValueConverter
-    //{
-    //    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        try
-    //        {
-    //            if (value != null)
-    //            {
-    //                var CoinDBData = value as ObservableCollection<BinanceViewModel.CoinDBData>;
-    //                if (CoinDBData == null || !CoinDBData.Any())
-    //                {
-    //                    return null;
-    //                }
-    //                List<string> coinNames = new List<string>();
-    //                foreach (var coin in CoinDBData.First().Coins)
-    //                {
-    //                    coinNames.Add(coin.Pair);
-    //                }
-    //                return coinNames;
-    //            }
-    //            return null;
-    //        }
-    //        catch (Exception)
-    //        {
-    //            throw;
-    //        }
-    //    }
+    public class ColourConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            try
+            {
+                if (value != null)
+                {
+                    decimal PercentValue = (decimal)value;
+                    if(PercentValue > 0 & PercentValue < 10)
+                    {
+                        return Brushes.LightGreen;
+                    }
+                    if(PercentValue >= 10)
+                    {
+                        return Brushes.Green;
+                    }
+                    if(PercentValue < 0)
+                    {
+                        return Brushes.Red;
+                    }
+                    if(PercentValue < 10)
+                    {
+                        return Brushes.DarkRed;
+                    }
+                }
+                return Brushes.White;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
 
-    //    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

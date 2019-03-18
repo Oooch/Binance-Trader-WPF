@@ -18,42 +18,6 @@ namespace Binance_Trader_WPF.Model
             }
         }
 
-        //public void CoinsDBLoad()
-        //{
-        //    using (var db = new Data.CoinDbContext())
-        //    {
-        //        var coins = db.Coins;
-        //    }
-        //}
-
-        //public void CoinsUpdate()
-        //{
-        //    using (var db = new Data.CoinDbContext())
-        //    {
-        //        var coins = CoinsGet();
-        //        var coinsDB = from c in db.Coins
-        //                         orderby c.Pair
-        //                         select c;
-        //        foreach (var coin in coins.Data.OrderBy(o => o.Symbol))
-        //        {
-        //            var coinExists = coinsDB.Where(o => o.Pair == coin.Symbol);
-        //            if (!coinExists.Any())
-        //            {
-        //                var coinNew = new Data.Coin();
-        //                coinNew.Pair = coin.Symbol;
-        //                coinNew.LastUpdated = DateTime.Now;
-        //                db.Coins.Add(coinNew);
-        //            }
-        //            else
-        //            {
-        //                var coinDB = coinExists.First();
-        //                coinDB.LastUpdated = DateTime.Now;
-        //            }
-        //            db.SaveChanges();
-        //        }
-        //    }
-        //}
-
         public async Task<CryptoExchange.Net.Objects.WebCallResult<Binance.Net.Objects.BinanceKline[]>> CoinIndepth(string Symbol, Binance.Net.Objects.KlineInterval interval)
         {
             var coins = CoinsGet();
@@ -89,5 +53,13 @@ namespace Binance_Trader_WPF.Model
                 }
             }
         }
+
+        //public async Task<CoinMarketCap.Entities.TickerEntity> CoinMarketCapInfo(string Symbol)
+        //{
+        //    using (var client = new CoinMarketCap.CoinMarketCapClient())
+        //    {
+        //        return await client.GetGlobalDataAsync(CoinMarketCap.Enums.ConvertEnum.USD);                
+        //    }
+        //}
     }
 }
